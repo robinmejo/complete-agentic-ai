@@ -45,3 +45,9 @@ uv pip list
 - `pyproject.toml` → Dependencies
 - `uv.lock` → Locked versions
 - `.venv` → Virtual environment
+
+## 🌐 Run Streamlit App
+
+```bash
+uv run streamlit run 5-Single-AI-Agent/4-app.py
+```

@@ -4,13 +4,20 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
+
 dependencies = [
-    "email-validator>=2.3.0",
-    "ipykernel>=7.3.0",
-    "jupyter>=1.1.1",
-    "langchain>=1.3.15",
-    "langchain-openai>=1.5.1",
-    "langgraph>=1.2.11",
-    "pydantic==2.11.7",
-    "python-dotenv>=1.2.2",
+    "email-validator>=2.3.0",       # Email validation
+    "ipykernel>=7.3.0",             # Jupyter Python kernel
+    "jupyter>=1.1.1",               # Jupyter notebooks
+    "langchain==0.1.16",            # LLM application framework
+    "langchain-community==0.0.32",  # Community integrations & tools
+    "langchain-openai==0.1.3",      # OpenAI integration
+    "langchainhub>=0.1.21",         # Reusable prompts from LangChain Hub
+    "langgraph==0.0.30",              # Agent workflows & orchestration
+    "pydantic==2.11.7",             # Data validation & schemas
+    "python-dotenv>=1.2.2",         # Load .env variables
+    "requests>=2.34.2",             # HTTP/API requests
+    "certifi>=2025.8.3",             # Trusted SSL certificates
+    "tavily-python>=0.8.1",         # Web search
+    "streamlit>=1.63.0",
 ]
