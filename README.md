@@ -51,3 +51,9 @@ uv pip list
 ```bash
 uv run streamlit run 5-Single-AI-Agent/4-app.py
 ```
+
+## 🌐 To show new Kernel in VSCODE
+
+```bash
+uv run python -m ipykernel install --user --name 6-multi-ai-agent --display-name "Python 3.12 (6-Multi-AI-Agent)"
+```

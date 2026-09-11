@@ -21,3 +21,13 @@ dependencies = [
     "tavily-python>=0.8.1",         # Web search
     "streamlit>=1.63.0",
 ]
+
+# NOTE:
+# Do NOT add 6-Multi-AI-Agent to this UV workspace.
+# It has its own .venv and pyproject.toml because it uses
+# a different LangChain version from the root project.
+#
+# [tool.uv.workspace]
+# members = [
+#     "6-Multi-AI-Agent",
+# ]
