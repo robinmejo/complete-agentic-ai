@@ -48,28 +48,6 @@ st.markdown(
         padding-top: 2rem;
     }
 
-    /* Header */
-    .agent-header {
-        text-align: center;
-        padding: 1rem 0 1.5rem 0;
-    }
-
-    .agent-icon {
-        font-size: 55px;
-        margin-bottom: 5px;
-    }
-
-    .agent-title {
-        font-size: 42px;
-        font-weight: 700;
-        margin-bottom: 5px;
-    }
-
-    .agent-subtitle {
-        font-size: 17px;
-        opacity: 0.7;
-    }
-
     /* Tool cards */
     .tool-card {
         padding: 15px;
