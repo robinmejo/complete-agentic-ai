@@ -63,3 +63,20 @@ uv run python -m ipykernel install --user --name 6-multi-ai-agent --display-name
 ```bash
 uv run streamlit run app.py
 ```
+
+## 🌐 Change directory for multi agent kernel
+
+```bash
+cd "C:\Robin\AI course\complete-agentic-ai\6-Multi-AI-Agent"
+```
+
+
+## 🌐 Change directory for running streamlit
+
+```bash
+cd 13-End-To-End-Agent
+```
+
+```bash
+streamlit run app.py
+```
