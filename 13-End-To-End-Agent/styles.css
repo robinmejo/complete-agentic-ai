@@ -1,0 +1,123 @@
+/* App Background */
+:root {
+    --app-bg: #111827;
+    --chat-pill-bg: #2a2d39;
+}
+
+.stApp,
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"],
+.main {
+    background: var(--app-bg) !important;
+}
+
+/* Hide Streamlit Header */
+header {
+    visibility: visible;
+    background: var(--app-bg) !important;
+}
+
+/* Main container */
+.block-container {
+    max-width: 1000px;
+    padding-top: 2rem;
+    background: transparent !important;
+}
+
+/* Sidebar */
+[data-testid="stSidebar"] {
+    background-color: #111827;
+    border-right: 1px solid #374151;
+}
+
+/* Keep sidebar toggle visible all the time */
+[data-testid="stSidebarCollapseButton"],
+[data-testid="collapsedControl"],
+button[aria-label="Close sidebar"],
+button[aria-label="Open sidebar"] {
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: flex !important;
+    pointer-events: auto !important;
+}
+
+[data-testid="stSidebar"]:hover [data-testid="stSidebarCollapseButton"],
+[data-testid="stSidebar"]:not(:hover) [data-testid="stSidebarCollapseButton"] {
+    opacity: 1 !important;
+}
+
+/* Sidebar text */
+[data-testid="stSidebar"] * {
+    color: white;
+}
+
+/* Buttons */
+.stButton button {
+    width: 100%;
+    border-radius: 12px;
+    background: #2563eb;
+    color: white;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.stButton button:hover {
+    background: #1d4ed8;
+}
+
+/* Chat input */
+.stChatInputContainer {
+    border-radius: 12px;
+    background: var(--app-bg) !important;
+}
+
+[data-testid="stBottomBlockContainer"],
+[data-testid="stChatInput"] > div {
+    background: var(--app-bg) !important;
+}
+
+[data-testid="stBottomBlockContainer"] > div {
+    background: var(--app-bg) !important;
+}
+
+[data-testid="stChatInput"] {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+[data-testid="stChatInput"] > div {
+    border-radius: 9999px !important;
+    overflow: hidden !important;
+    background: var(--chat-pill-bg) !important;
+}
+
+[data-testid="stChatInput"] > div > div,
+[data-testid="stChatInput"] [data-baseweb="textarea"] {
+    background: var(--chat-pill-bg) !important;
+}
+
+[data-testid="stChatInput"] textarea {
+    background: var(--chat-pill-bg) !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* User messages */
+[data-testid="stChatMessage"] {
+    border-radius: 16px;
+    padding: 10px;
+}
+
+/* Title */
+.main-title {
+    text-align: center;
+    color: white;
+    font-size: 3rem;
+    font-weight: 700;
+}
+
+.subtitle {
+    text-align: center;
+    color: #94a3b8;
+    margin-bottom: 30px;
+}

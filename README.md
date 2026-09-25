@@ -78,5 +78,5 @@ cd 13-End-To-End-Agent
 ```
 
 ```bash
-streamlit run app.py
+streamlit run app_db.py
 ```
