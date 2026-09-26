@@ -15,3 +15,6 @@ wheels/
 # DB ignore
 *.db-shm
 *.db-wal
+
+# Chroma vector database
+chroma_db/

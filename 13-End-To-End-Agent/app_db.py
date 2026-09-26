@@ -1,3 +1,5 @@
+import hashlib
+import tempfile
 import uuid
 from pathlib import Path
 
@@ -25,6 +27,8 @@ from backend.graph import chatbot
 from backend.message_utils import (
     message_content_to_text,
 )
+
+from tools.rag.ingest import ingest_pdf
 
 from backend.titles import (
     create_fallback_title,
@@ -315,8 +319,8 @@ def convert_saved_messages(messages):
     Convert LangChain messages into dictionaries
     that Streamlit can display.
 
-    ToolMessage and SystemMessage are not displayed
-    in the normal conversation history.
+    ToolMessage is preserved so tool usage remains
+    visible after reruns and when loading a conversation.
     """
 
     converted_messages = []
@@ -328,31 +332,54 @@ def convert_saved_messages(messages):
             HumanMessage,
         ):
 
-            role = "user"
+            converted_messages.append(
+                {
+                    "role": "user",
+                    "content": message_content_to_text(
+                        message.content
+                    ),
+                }
+            )
 
         elif isinstance(
             message,
             AIMessage,
         ):
 
-            role = "assistant"
+            content = message_content_to_text(
+                message.content
+            )
 
-        else:
+            # Do not display the AI tool-call message itself.
+            # The corresponding ToolMessage below is displayed
+            # as the compact "Tool used" entry.
+            if content:
+                converted_messages.append(
+                    {
+                        "role": "assistant",
+                        "content": content,
+                    }
+                )
 
-            # Ignore SystemMessage,
-            # ToolMessage and other types.
-            continue
+        elif isinstance(
+            message,
+            ToolMessage,
+        ):
 
-        content = message_content_to_text(
-            message.content
-        )
+            converted_messages.append(
+                {
+                    "role": "tool",
+                    "tool_name": (
+                        message.name
+                        or "Tool"
+                    ),
+                    "content": message_content_to_text(
+                        message.content
+                    ),
+                }
+            )
 
-        converted_messages.append(
-            {
-                "role": role,
-                "content": content,
-            }
-        )
+        # SystemMessage and other message types are ignored.
 
     return converted_messages
 
@@ -443,6 +470,10 @@ if (
         "message_history"
     ] = []
 
+
+if "indexed_files" not in st.session_state:
+
+    st.session_state["indexed_files"] = {}
 
 if (
     "thread_id"
@@ -691,29 +722,211 @@ for message in (
     ]
 ):
 
-    with st.chat_message(
-        message["role"]
+    if message["role"] == "tool":
+
+        # Compact tool display, matching the original UI.
+        with st.status(
+            f"🔧 Tool used: {message.get('tool_name', 'Tool')}",
+            state="complete",
+        ):
+
+            if message.get("content"):
+                st.code(
+                    message["content"]
+                )
+
+    else:
+
+        with st.chat_message(
+            message["role"]
+        ):
+
+            st.markdown(
+                message["content"]
+            )
+
+
+# ------------------------------------------------------------
+# Compact uploaded documents
+# ------------------------------------------------------------
+
+if st.session_state["indexed_files"]:
+
+    with st.expander(
+        f"📚 Uploaded Documents ({len(st.session_state['indexed_files'])})",
+        expanded=False,
     ):
 
-        st.markdown(
-            message["content"]
-        )
+        for file_info in st.session_state["indexed_files"].values():
+
+            st.markdown(
+                f"📄 **{file_info['name']}**"
+            )
+
+            st.caption(
+                f"✅ Ready • "
+                f"{file_info['pages']} pages • "
+                f"{file_info['chunks']} chunks"
+            )
 
 
 # ------------------------------------------------------------
-# Chat input
+# Chat input with PDF upload
 # ------------------------------------------------------------
 
-user_input = st.chat_input(
-    "Type your message here"
+chat_input = st.chat_input(
+    "Ask anything...",
+    accept_file="multiple",
+    file_type=["pdf"],
 )
 
 
 # ------------------------------------------------------------
-# Process a new user message
+# Process uploaded PDFs and new user message
 # ------------------------------------------------------------
 
-if user_input:
+if chat_input:
+
+    # --------------------------------------------------------
+    # Streamlit returns a ChatInputValue when file upload
+    # is enabled. Extract the text prompt and files safely.
+    # --------------------------------------------------------
+
+    user_input = chat_input.text
+
+    uploaded_files = chat_input.files
+
+    # --------------------------------------------------------
+    # Index newly uploaded PDF files
+    # --------------------------------------------------------
+
+    newly_indexed_files = []
+
+    if uploaded_files:
+
+        for uploaded_file in uploaded_files:
+
+            file_bytes = uploaded_file.getvalue()
+
+            file_hash = hashlib.sha256(
+                file_bytes
+            ).hexdigest()
+
+            # Avoid indexing the same file more than once
+            # during the current Streamlit session.
+            if file_hash in st.session_state["indexed_files"]:
+                continue
+
+            with st.status(
+                f"📄 Processing {uploaded_file.name}...",
+                expanded=True,
+            ) as upload_status:
+
+                try:
+
+                    suffix = Path(
+                        uploaded_file.name
+                    ).suffix or ".pdf"
+
+                    temp_file_path = None
+
+                    with tempfile.NamedTemporaryFile(
+                        delete=False,
+                        suffix=suffix,
+                    ) as temp_file:
+
+                        temp_file.write(
+                            file_bytes
+                        )
+
+                        temp_file_path = Path(
+                            temp_file.name
+                        )
+
+                    try:
+
+                        ingest_result = ingest_pdf(
+                            temp_file_path
+                        )
+
+                    finally:
+
+                        if (
+                            temp_file_path
+                            and temp_file_path.exists()
+                        ):
+
+                            temp_file_path.unlink()
+
+                    file_info = {
+                        "name": uploaded_file.name,
+                        "pages": ingest_result["pages"],
+                        "chunks": ingest_result["chunks"],
+                        "hash": file_hash,
+                    }
+
+                    # ------------------------------------------------
+                    # IMPORTANT:
+                    # Save the completed upload in session state.
+                    # This survives st.rerun() and is displayed above
+                    # the chat input on every run.
+                    # ------------------------------------------------
+
+                    st.session_state[
+                        "indexed_files"
+                    ][
+                        file_hash
+                    ] = file_info
+
+                    newly_indexed_files.append(
+                        file_info
+                    )
+
+                    upload_status.update(
+                        label=(
+                            f"✅ {uploaded_file.name} "
+                            "is ready"
+                        ),
+                        state="complete",
+                        expanded=False,
+                    )
+
+                except Exception as upload_error:
+
+                    upload_status.update(
+                        label=(
+                            f"❌ Failed to process "
+                            f"{uploaded_file.name}"
+                        ),
+                        state="error",
+                        expanded=True,
+                    )
+
+                    st.error(
+                        f"Could not process "
+                        f"{uploaded_file.name}: "
+                        f"{upload_error}"
+                    )
+
+    # --------------------------------------------------------
+    # If the user uploaded a file without entering a question,
+    # do not send an empty message to LangGraph.
+    # --------------------------------------------------------
+
+    if not user_input.strip():
+
+        if newly_indexed_files:
+
+            st.success(
+                "📚 Your document is indexed and ready "
+                "for questions."
+            )
+
+        st.rerun()
+
+    # --------------------------------------------------------
+    # Current thread
+    # --------------------------------------------------------
 
     current_thread_id = (
         st.session_state[
@@ -875,24 +1088,28 @@ if user_input:
                     # Display tool execution
                     # ----------------------------------------
 
+                    # Keep the original compact tool UI.
                     with st.status(
                         f"🔧 Tool used: {tool_name}",
                         state="complete",
                     ):
 
-                        st.write(
-                            f"**Tool:** `{tool_name}`"
-                        )
-
                         if tool_result:
-
-                            st.write(
-                                "**Result:**"
-                            )
-
                             st.code(
                                 tool_result
                             )
+
+                    # Persist the tool message in the same conversation
+                    # history so it is restored after st.rerun().
+                    st.session_state[
+                        "message_history"
+                    ].append(
+                        {
+                            "role": "tool",
+                            "tool_name": tool_name,
+                            "content": tool_result,
+                        }
+                    )
 
                 # ============================================
                 # AI MESSAGE
