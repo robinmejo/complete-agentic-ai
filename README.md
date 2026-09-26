@@ -74,6 +74,10 @@ cd "C:\Robin\AI course\complete-agentic-ai\6-Multi-AI-Agent"
 ## 🌐 Change directory for running streamlit
 
 ```bash
+cd 6-Multi-AI-Agent
+```
+
+```bash
 cd 13-End-To-End-Agent
 ```
 
