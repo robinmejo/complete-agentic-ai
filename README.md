@@ -84,3 +84,32 @@ cd 13-End-To-End-Agent
 ```bash
 streamlit run app_db.py
 ```
+
+The overall flow is:
+
+                    app_db.py
+                       │
+                       ▼
+                 ┌───────────┐
+                 │  backend  │
+                 └───────────┘
+                       │
+       ┌───────────────┼────────────────┐
+       ▼               ▼                ▼
+     config           llm             state
+       │               │                │
+       │               ▼                │
+       │          OpenAI/Cohere         │
+       │                                │
+       └───────────────┬────────────────┘
+                       ▼
+                    graph.py
+                       │
+                       ▼
+                  LangGraph
+                       │
+                       ▼
+                  database.py
+                       │
+                       ▼
+                   chatbot.db

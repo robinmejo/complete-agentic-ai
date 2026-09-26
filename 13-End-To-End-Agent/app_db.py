@@ -6,7 +6,9 @@ import streamlit as st
 from langchain_core.messages import (
     AIMessage,
     HumanMessage,
+    ToolMessage,
 )
+
 
 # ------------------------------------------------------------
 # Backend imports
@@ -19,8 +21,6 @@ from backend.conversations import (
 )
 
 from backend.graph import chatbot
-
-from backend.llm import llm
 
 from backend.message_utils import (
     message_content_to_text,
@@ -35,8 +35,6 @@ from backend.titles import (
 # ------------------------------------------------------------
 # Streamlit configuration
 # ------------------------------------------------------------
-
-# set_page_config must be called before other Streamlit commands.
 
 st.set_page_config(
     page_title="Agentic Chatbot",
@@ -101,10 +99,7 @@ def add_thread(thread_id):
     without duplicates.
     """
 
-    if (
-        thread_id
-        not in st.session_state["chat_threads"]
-    ):
+    if thread_id not in st.session_state["chat_threads"]:
 
         st.session_state[
             "chat_threads"
@@ -114,6 +109,40 @@ def add_thread(thread_id):
 
 
 def reset_chat():
+    """
+    Create a new conversation.
+
+    If the current conversation is already empty,
+    reuse it instead of creating another empty
+    "New Conversation".
+    """
+
+    # If current chat is already empty,
+    # just keep using it.
+    if not st.session_state["message_history"]:
+
+        current_thread_id = (
+            st.session_state["thread_id"]
+        )
+
+        st.session_state["thread_titles"][
+            current_thread_id
+        ] = "New Conversation"
+
+        return
+
+    # Otherwise create a genuinely new conversation.
+    new_thread_id = generate_thread_id()
+
+    st.session_state["thread_id"] = new_thread_id
+
+    st.session_state["message_history"] = []
+
+    add_thread(new_thread_id)
+
+    st.session_state["thread_titles"][
+        new_thread_id
+    ] = "New Conversation"
     """
     Create a new empty conversation.
     """
@@ -285,6 +314,9 @@ def convert_saved_messages(messages):
     """
     Convert LangChain messages into dictionaries
     that Streamlit can display.
+
+    ToolMessage and SystemMessage are not displayed
+    in the normal conversation history.
     """
 
     converted_messages = []
@@ -309,7 +341,6 @@ def convert_saved_messages(messages):
 
             # Ignore SystemMessage,
             # ToolMessage and other types.
-
             continue
 
         content = message_content_to_text(
@@ -392,7 +423,7 @@ st.markdown(
     </div>
 
     <div class="subtitle">
-        LangGraph • Cohere/OpenAI • Multi-Thread Memory
+        LangGraph • OpenAI • Multi-Thread Memory
     </div>
     """,
     unsafe_allow_html=True,
@@ -581,7 +612,6 @@ for thread_id in reversed(
 
         button_label = conversation_title
 
-
     # --------------------------------------------------------
     # Create two columns:
     # one for conversation
@@ -594,7 +624,6 @@ for thread_id in reversed(
     ) = st.sidebar.columns(
         [5, 1]
     )
-
 
     # --------------------------------------------------------
     # Conversation button
@@ -627,7 +656,6 @@ for thread_id in reversed(
             )
 
             st.rerun()
-
 
     # --------------------------------------------------------
     # Delete button
@@ -693,7 +721,6 @@ if user_input:
         ]
     )
 
-
     # --------------------------------------------------------
     # Check existing title
     # --------------------------------------------------------
@@ -707,7 +734,6 @@ if user_input:
         )
     )
 
-
     should_generate_title = (
         not existing_title
         or
@@ -715,9 +741,7 @@ if user_input:
         == "New Conversation"
     )
 
-
     generated_title = None
-
 
     # --------------------------------------------------------
     # Generate title only for first
@@ -748,13 +772,11 @@ if user_input:
                 title_error,
             )
 
-
         st.session_state[
             "thread_titles"
         ][
             current_thread_id
         ] = generated_title
-
 
     # --------------------------------------------------------
     # Store user message in Streamlit
@@ -770,7 +792,6 @@ if user_input:
         }
     )
 
-
     # --------------------------------------------------------
     # Display user message
     # --------------------------------------------------------
@@ -783,7 +804,6 @@ if user_input:
             user_input
         )
 
-
     # --------------------------------------------------------
     # LangGraph thread configuration
     # --------------------------------------------------------
@@ -793,7 +813,6 @@ if user_input:
             "thread_id": current_thread_id
         }
     }
-
 
     # --------------------------------------------------------
     # Stream assistant response
@@ -805,49 +824,111 @@ if user_input:
             "assistant"
         ):
 
-            ai_message = st.write_stream(
-                (
-                    message_content_to_text(
-                        message_chunk.content
+            # ------------------------------------------------
+            # Placeholder for final AI response
+            # ------------------------------------------------
+
+            response_placeholder = st.empty()
+
+            full_response = ""
+
+            # ------------------------------------------------
+            # Stream LangGraph messages
+            # ------------------------------------------------
+
+            for (
+                message_chunk,
+                metadata,
+            ) in chatbot.stream(
+                {
+                    "messages": [
+                        HumanMessage(
+                            content=user_input
+                        )
+                    ]
+                },
+                config=config,
+                stream_mode="messages",
+            ):
+
+                # ============================================
+                # TOOL MESSAGE
+                # ============================================
+
+                if isinstance(
+                    message_chunk,
+                    ToolMessage,
+                ):
+
+                    tool_name = (
+                        message_chunk.name
+                        or "Tool"
                     )
 
-                    for (
-                        message_chunk,
-                        metadata,
-                    ) in chatbot.stream(
-                        {
-                            "messages": [
-                                HumanMessage(
-                                    content=user_input
-                                )
-                            ]
-                        },
-                        config=config,
-                        stream_mode="messages",
+                    tool_result = (
+                        message_content_to_text(
+                            message_chunk.content
+                        )
                     )
 
-                    if isinstance(
-                        message_chunk,
-                        AIMessage,
+                    # ----------------------------------------
+                    # Display tool execution
+                    # ----------------------------------------
+
+                    with st.status(
+                        f"🔧 Tool used: {tool_name}",
+                        state="complete",
+                    ):
+
+                        st.write(
+                            f"**Tool:** `{tool_name}`"
+                        )
+
+                        if tool_result:
+
+                            st.write(
+                                "**Result:**"
+                            )
+
+                            st.code(
+                                tool_result
+                            )
+
+                # ============================================
+                # AI MESSAGE
+                # ============================================
+
+                elif isinstance(
+                    message_chunk,
+                    AIMessage,
+                ):
+
+                    content = (
+                        message_content_to_text(
+                            message_chunk.content
+                        )
                     )
-                )
+
+                    if content:
+
+                        full_response += content
+
+                        response_placeholder.markdown(
+                            full_response
+                        )
+
+            # ------------------------------------------------
+            # Store complete assistant response
+            # ------------------------------------------------
+
+            st.session_state[
+                "message_history"
+            ].append(
+                {
+                    "role": "assistant",
+                    "content": full_response,
+                }
             )
-
-
-        # ----------------------------------------------------
-        # Store complete assistant response
-        # in Streamlit session state
-        # ----------------------------------------------------
-
-        st.session_state[
-            "message_history"
-        ].append(
-            {
-                "role": "assistant",
-                "content": ai_message,
-            }
-        )
-
 
         # ----------------------------------------------------
         # Save generated title only after
@@ -872,13 +953,11 @@ if user_input:
                     database_error,
                 )
 
-
         # ----------------------------------------------------
         # Refresh UI
         # ----------------------------------------------------
 
         st.rerun()
-
 
     except Exception as chatbot_error:
 
